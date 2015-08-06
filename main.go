@@ -10,22 +10,22 @@ import "os"
 import "strconv"
 import "time"
 
-const MAX_PACKET_SIZE = 1500
+const maxPacketSize = 1500
 
 // Configuration
 var (
-	IOT_TOKEN       string
-	IOT_SERVER_ADDR string
-	LISTEN_ADDR     string
+	iotToken      string
+	iotServerAddr string
+	listenAddr    string
 )
 
 func init() {
-	flag.StringVar(&IOT_TOKEN, "iot-token", "REQUIRED", "IoT write token")
-	flag.StringVar(&IOT_SERVER_ADDR, "iot-server-addr", "opentsdb.iot.runabove.io:4243", "IoT server address")
-	flag.StringVar(&LISTEN_ADDR, "listen-addr", "224.1.0.7:1234", "Multicast UDP address to listen")
+	flag.StringVar(&iotToken, "iot-token", "REQUIRED", "IoT write token")
+	flag.StringVar(&iotServerAddr, "iot-server-addr", "opentsdb.iot.runabove.io:4243", "IoT server address")
+	flag.StringVar(&listenAddr, "listen-addr", "224.1.0.7:1234", "Multicast UDP address to listen")
 	flag.Parse()
 
-	if IOT_TOKEN == "REQUIRED" {
+	if iotToken == "REQUIRED" {
 		fmt.Println("IoT token is missing (--iot-token)")
 		os.Exit(-1)
 	}
@@ -34,7 +34,7 @@ func init() {
 func sendToIoT(queue chan []byte) {
 
 	// Create a buffer to store all coming data
-	buffer := make([]byte, 0)
+	var buffer []byte
 
 	// Create a timeout loop to wakeup
 	timeout := make(chan bool, 1)
@@ -58,12 +58,12 @@ func sendToIoT(queue chan []byte) {
 		case <-timeout:
 			if len(buffer) > 0 {
 				fmt.Printf("Will try to send %d data\n", len(buffer))
-				conn, err := tls.Dial("tcp", IOT_SERVER_ADDR, &tls.Config{})
+				conn, err := tls.Dial("tcp", iotServerAddr, &tls.Config{})
 				if err != nil {
 					fmt.Printf("Error while connecting: %s", err.Error())
 				} else {
 					// Connecting success, try to send auth
-					fmt.Fprintf(conn, "auth %s\n", IOT_TOKEN)
+					fmt.Fprintf(conn, "auth %s\n", iotToken)
 					response, err := bufio.NewReader(conn).ReadString('\n')
 					if err != nil {
 						fmt.Printf("Error while writing to socket: %s\n", err.Error())
@@ -78,7 +78,7 @@ func sendToIoT(queue chan []byte) {
 							} else {
 								fmt.Printf("OK\n")
 								// Success, clear buffer
-								buffer = make([]byte, 0)
+								buffer = buffer[:0]
 							}
 						}
 					}
@@ -92,9 +92,9 @@ func sendToIoT(queue chan []byte) {
 
 func main() {
 
-	fmt.Printf("Listening to %s\n", LISTEN_ADDR)
+	fmt.Printf("Listening to %s\n", listenAddr)
 
-	addr, err := net.ResolveUDPAddr("udp", LISTEN_ADDR)
+	addr, err := net.ResolveUDPAddr("udp", listenAddr)
 	if err != nil {
 		panic(fmt.Sprintf("can't resolve address: %s", err))
 	}
@@ -110,7 +110,7 @@ func main() {
 
 	// Waiting packets
 	for {
-		b := make([]byte, MAX_PACKET_SIZE)
+		b := make([]byte, maxPacketSize)
 
 		// Read data
 		n, src, err := l.ReadFromUDP(b)
