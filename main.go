@@ -37,13 +37,7 @@ func sendToIoT(queue chan []byte) {
 	var buffer []byte
 
 	// Create a timeout loop to wakeup
-	timeout := make(chan bool, 1)
-	go func() {
-		for {
-			time.Sleep(10 * time.Second)
-			timeout <- true
-		}
-	}()
+	timeout := time.Tick(10 * time.Second)
 
 	// Infinite loop
 	for {
